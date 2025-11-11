@@ -1,0 +1,12 @@
+[package]
+name = "hmm"
+version = "0.0.1"
+edition = "2024"
+
+[[bin]]
+name = "hmm"
+path = "src/hmm.rs"
+
+[dependencies]
+nalgebra = "0.32"
+rand = "0.8"
