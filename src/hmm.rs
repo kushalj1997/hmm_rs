@@ -1,17 +1,18 @@
 // HMM
 
-use std::{thread, time};
 use nalgebra::DMatrix;
 use rand::Rng;
+use tokio::time::{sleep, Duration};
 
 struct MarkovProcess
 {
   state: DMatrix<f64>,
+  id: u128,
 }
 
 impl MarkovProcess {
   // Option 1: Create a `new()` associated function
-  fn new() -> Self {
+  fn new(id: u128) -> Self {
     let mut rng = rand::thread_rng();
     let mut data = Vec::new();
     
@@ -22,20 +23,21 @@ impl MarkovProcess {
     
     MarkovProcess {
       state: DMatrix::from_row_slice(7, 7, &data),
+      id: id,
     }
   }
 
-  fn compute(&mut self)
+  async fn compute(&mut self)
   {
     loop {
       match self.state.clone().try_inverse() {
         Some(inv) => {
-          println!("Inverse: {}", inv);
+          println!("Process {} - Inverse: {}", self.id, inv);
           self.state = inv;
-          thread::sleep(time::Duration::from_millis(1));
+          sleep(Duration::from_millis(1)).await;
         }
         None => {
-          eprintln!("Matrix is not invertible");
+          eprintln!("Process {} - Matrix is not invertible", self.id);
           break;
         }
       }
@@ -43,17 +45,23 @@ impl MarkovProcess {
   }
 }
 
-fn main()
+#[tokio::main]
+async fn main()
 {
-  // Option 1: Using the `new()` function
-  let mut mp = MarkovProcess::new();
-  mp.compute();
+  let mut handles = Vec::new();
   
-  // Option 2: Direct struct literal initialization
-  // let mut mp = MarkovProcess {
-  //   state: Conventional::zero((7, 7)),
-  // };
+  for i in 0..77 {
+    // Option 1: Using the `new()` function
+    let mut mp = MarkovProcess::new(i);
+    // Spawn each computation asynchronously
+    let handle = tokio::spawn(async move {
+      mp.compute().await;
+    });
+    handles.push(handle);
+  }
   
-  // Option 3: If you implement Default trait, you can use:
-  // let mut mp = MarkovProcess::default();
+  // Wait for all tasks to complete
+  for handle in handles {
+    handle.await.unwrap();
+  }
 }
